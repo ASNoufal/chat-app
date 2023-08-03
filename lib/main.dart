@@ -23,6 +23,6 @@ class App extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
               seedColor: const Color.fromARGB(255, 63, 17, 177)),
         ),
-        home: AuthScreen());
+        home: const AuthScreen());
   }
 }

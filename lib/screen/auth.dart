@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -12,13 +15,29 @@ class _AuthScreenState extends State<AuthScreen> {
   bool _isLogin = true;
   String emailid = '';
   String passid = '';
-  void submit() {
+  void submit() async {
     final validate = _form.currentState!.validate();
+    if (!validate) {
+      return;
+    }
 
-    if (validate) {
-      _form.currentState!.save();
-      print(emailid);
-      print(passid);
+    _form.currentState!.save();
+    print(emailid);
+    print(passid);
+    if (_isLogin) {
+      //login to next page
+    } else {
+      try {
+        await _firebase.createUserWithEmailAndPassword(
+            email: emailid, password: passid);
+      } on FirebaseAuthException catch (error) {
+        if (error.code == 'email-already-in-use') {
+          //throw error
+        }
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(error.message ?? "Authentication problems")));
+      }
     }
   }
 
@@ -39,70 +58,72 @@ class _AuthScreenState extends State<AuthScreen> {
               Card(
                 child: SingleChildScrollView(
                   child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Form(
-                          key: _form,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              TextFormField(
-                                validator: (value) {
-                                  if (value == null ||
-                                      value.trim().isEmpty ||
-                                      !value.contains("@")) {
-                                    return "UserName is incorrect";
-                                  }
+                    padding: const EdgeInsets.all(16),
+                    child: Form(
+                      key: _form,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextFormField(
+                            validator: (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty ||
+                                  !value.contains("@")) {
+                                return "UserName is incorrect";
+                              }
 
-                                  return null;
-                                },
-                                onSaved: (newValue) {
-                                  emailid = newValue!;
-                                },
-                                decoration: const InputDecoration(
-                                  label: Text('Email Id'),
-                                ),
-                                keyboardType: TextInputType.emailAddress,
-                                autocorrect: false,
-                                textCapitalization: TextCapitalization.none,
-                              ),
-                              TextFormField(
-                                validator: (value) {
-                                  if (value == null ||
-                                      value.trim().isEmpty ||
-                                      value.length < 6) {
-                                    return "Password is Too short";
-                                  }
-                                  return null;
-                                },
-                                onSaved: (newValue) {
-                                  passid = newValue!;
-                                },
-                                decoration: const InputDecoration(
-                                  label: Text('Password'),
-                                ),
-                                obscureText: true,
-                              ),
-                              const SizedBox(
-                                height: 12,
-                              ),
-                              ElevatedButton(
-                                  onPressed: submit,
-                                  style: ElevatedButton.styleFrom(
-                                      backgroundColor: Theme.of(context)
-                                          .colorScheme
-                                          .primaryContainer),
-                                  child: Text(_isLogin ? "Login" : "Sign up")),
-                              TextButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _isLogin = !_isLogin;
-                                    });
-                                  },
-                                  child: Text(_isLogin
-                                      ? "Create an account"
-                                      : "Already have Existing account"))
-                            ],
-                          ))),
+                              return null;
+                            },
+                            onSaved: (newValue) {
+                              emailid = newValue!;
+                            },
+                            decoration: const InputDecoration(
+                              label: Text('Email Id'),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            autocorrect: false,
+                            textCapitalization: TextCapitalization.none,
+                          ),
+                          TextFormField(
+                            validator: (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty ||
+                                  value.length < 6) {
+                                return "Password is Too short";
+                              }
+                              return null;
+                            },
+                            onSaved: (newValue) {
+                              passid = newValue!;
+                            },
+                            decoration: const InputDecoration(
+                              label: Text('Password'),
+                            ),
+                            obscureText: true,
+                          ),
+                          const SizedBox(
+                            height: 12,
+                          ),
+                          ElevatedButton(
+                              onPressed: submit,
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer),
+                              child: Text(_isLogin ? "Login" : "Sign up")),
+                          TextButton(
+                              onPressed: () {
+                                setState(() {
+                                  _isLogin = !_isLogin;
+                                });
+                              },
+                              child: Text(_isLogin
+                                  ? "Create an account"
+                                  : "Already have Existing account"))
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
