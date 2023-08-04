@@ -1,3 +1,8 @@
+import 'dart:io';
+
+import 'package:chatapp/widget/user_image_picker.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -11,13 +16,19 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  File? currentImage;
   final _form = GlobalKey<FormState>();
   bool _isLogin = true;
   String emailid = '';
   String passid = '';
+  String username = '';
+  bool isAuthenticating = false;
   void submit() async {
     final validate = _form.currentState!.validate();
     if (!validate) {
+      return;
+    }
+    if (!_isLogin && currentImage == null) {
       return;
     }
 
@@ -25,17 +36,40 @@ class _AuthScreenState extends State<AuthScreen> {
     print(emailid);
     print(passid);
     try {
+      setState(() {
+        isAuthenticating = true;
+      });
       if (_isLogin) {
         final UserCredential = await _firebase.signInWithEmailAndPassword(
             email: emailid, password: passid);
       } else {
         final UserCredential = await _firebase.createUserWithEmailAndPassword(
             email: emailid, password: passid);
+
+        final imagestorage = FirebaseStorage.instance
+            .ref()
+            .child('userImage')
+            .child('${UserCredential.user!.uid}.jpg');
+
+        await imagestorage.putFile(currentImage!);
+        final imageurl = await imagestorage.getDownloadURL();
+
+        FirebaseFirestore.instance
+            .collection('user')
+            .doc(UserCredential.user!.uid)
+            .set({
+          'username': username,
+          'email': emailid,
+          'userimage': imageurl
+        });
       }
     } on FirebaseAuthException catch (error) {
       if (error.code == 'email-already-in-use') {
         //throw error
       }
+      setState(() {
+        isAuthenticating = false;
+      });
       ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(error.message ?? "Authentication problems")));
@@ -65,6 +99,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          if (!_isLogin)
+                            UserImagePicker(
+                              ongetimage: (image) {
+                                currentImage = image;
+                              },
+                            ),
                           TextFormField(
                             validator: (value) {
                               if (value == null ||
@@ -85,6 +125,22 @@ class _AuthScreenState extends State<AuthScreen> {
                             autocorrect: false,
                             textCapitalization: TextCapitalization.none,
                           ),
+                          if (!_isLogin)
+                            TextFormField(
+                              decoration: const InputDecoration(
+                                  label: Text("username")),
+                              validator: (value) {
+                                if (value == null ||
+                                    value.isEmpty ||
+                                    value.trim().length < 4) {
+                                  return "Too shoot";
+                                }
+                                return null;
+                              },
+                              onSaved: (newValue) {
+                                username = newValue!;
+                              },
+                            ),
                           TextFormField(
                             validator: (value) {
                               if (value == null ||
@@ -105,13 +161,16 @@ class _AuthScreenState extends State<AuthScreen> {
                           const SizedBox(
                             height: 12,
                           ),
-                          ElevatedButton(
-                              onPressed: submit,
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer),
-                              child: Text(_isLogin ? "Login" : "Sign up")),
+                          if (isAuthenticating)
+                            const CircularProgressIndicator(),
+                          if (!isAuthenticating)
+                            ElevatedButton(
+                                onPressed: submit,
+                                style: ElevatedButton.styleFrom(
+                                    backgroundColor: Theme.of(context)
+                                        .colorScheme
+                                        .primaryContainer),
+                                child: Text(_isLogin ? "Login" : "Sign up")),
                           TextButton(
                               onPressed: () {
                                 setState(() {
