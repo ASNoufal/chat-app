@@ -19,7 +19,7 @@ class ChatScreen extends StatelessWidget {
               icon: const Icon(Icons.exit_to_app))
         ],
       ),
-      body: Column(
+      body: const Column(
         children: [Expanded(child: NewMessage()), ChatMessage()],
       ),
     );

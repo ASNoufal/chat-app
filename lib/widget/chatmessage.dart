@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ChatMessage extends StatefulWidget {
@@ -8,19 +10,33 @@ class ChatMessage extends StatefulWidget {
 }
 
 class _ChatMessageState extends State<ChatMessage> {
-  var sendmessagecontroller = TextEditingController();
+  final sendmessagecontroller = TextEditingController();
   @override
   void dispose() {
     sendmessagecontroller.dispose();
     super.dispose();
   }
 
-  void onsubmitbutton() {
+  void onsubmitbutton() async {
     final sendmessge = sendmessagecontroller.text;
-    if (sendmessge.isEmpty) {
+    if (sendmessge.trim().isEmpty) {
       return;
     }
+    FocusScope.of(context).unfocus();
     sendmessagecontroller.clear();
+    final userid = FirebaseAuth.instance.currentUser!;
+    final userData = await FirebaseFirestore.instance
+        .collection('user')
+        .doc(userid.uid)
+        .get();
+    final data = userData.data();
+    FirebaseFirestore.instance.collection('chat').add({
+      'text': sendmessge,
+      'createdAt': Timestamp.now(),
+      'userId': userid.uid,
+      'userimages': data!['userimage'],
+      'usernames': data['username'],
+    });
   }
 
   @override
