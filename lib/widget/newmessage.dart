@@ -31,6 +31,7 @@ class NewMessage extends StatelessWidget {
           }
           final chatsnap = chatsnapshot.data!.docs;
           return ListView.builder(
+              padding: const EdgeInsets.all(10),
               reverse: true,
               itemCount: chatsnap.length,
               itemBuilder: (context, index) {
